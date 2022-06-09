@@ -1,92 +1,117 @@
-
+import Header from './components/Header';
+import Drawer from './components/Drawer';
+import { Route, Routes } from 'react-router-dom';
+import React from 'react';
+import axios from 'axios';
+import Home from './pages/Home';
+import Favorites from './pages/Favorites';
+import AppContext from './context';
+import Orders from './pages/Orders';
 
 
 function App() {
-  return (
-    <div className='wrapper clear'>
-      <header className='d-flex justify-between align-center p-40'>
-        <div className='d-flex align-center'>
-          <img width={40} height={40} src="/img/header/logo.png"/>
-          <div>
-            <h3 className="text-uppercase">SneakerShop</h3>
-            <p className="opacity-5">Shop better sneakers</p>
-          </div>
-        </div>
-        <ul className='d-flex'>
-          <li className="mr-30">
-            <img width={18} height={18} src="/img/header/card.svg"/>
-            <span>1205 грн.</span>
-          </li>
-          <li>
-            <img width={18} height={18} src="/img/header/union.svg"/>
-          </li>
-        </ul>
-      </header>
-      <div className='content p-40'>
-        <h1 className="mb-40">All sneakers</h1>
+	const [items, setItems] = React.useState([]);
+	const [cartItems, setCartItems] = React.useState([]);
+	const [drawerOpened, setDrawerOpened] = React.useState(false);
+	const [searchValue, setSearchValue] = React.useState('');
+	const [favorites, setFavorites] = React.useState([]);
+	const [isLoading, setIsLoading] = React.useState(true);
 
-        <div className="d-flex">
-          <div className="card">
-            <img width={133} height={112} src="/img/sneakers/1.jpg" alt="Sneakers"/>
-            <h5>Men Sneakers<br/>Nike Blazer Mid Suede</h5>
-            <div className="d-flex justify-between align-center">
-              <div className="d-flex flex-column">
-                <span>Price:</span>
-                <b>400$</b>
-              </div>
-              <button className="button">
-                <img width={11} height={11} src="/img/card/add.svg" alt="Plus"/>
-              </button>
-            </div>
-          </div>
+	React.useEffect(() => {
+		async function fetchData() {
+			const favoritesResponse = await axios.get('https://629782ee14e756fe3b31ad8f.mockapi.io/favorites');
+			const cartResponse = await axios.get('https://629782ee14e756fe3b31ad8f.mockapi.io/cartItems');
+			const itemsResponse = await axios.get('https://629782ee14e756fe3b31ad8f.mockapi.io/items');
 
-          <div className="card">
-            <img width={133} height={112} src="/img/sneakers/2.jpg" alt="Sneakers"/>
-            <h5>Men Sneakers<br/>Nike Blazer Mid Suede</h5>
-            <div className="d-flex justify-between align-center">
-              <div className="d-flex flex-column">
-                <span>Price:</span>
-                <b>400$</b>
-              </div>
-              <button className="button">
-                <img width={11} height={11} src="/img/card/add.svg" alt="Plus"/>
-              </button>
-            </div>
-          </div>
+			setIsLoading(false);
+			setFavorites(favoritesResponse.data);
+			setCartItems(cartResponse.data);
+			setItems(itemsResponse.data);
+		}
 
-          <div className="card">
-            <img width={133} height={112} src="/img/sneakers/3.jpg" alt="Sneakers"/>
-            <h5>Men Sneakers<br/>Nike Blazer Mid Suede</h5>
-            <div className="d-flex justify-between align-center">
-              <div className="d-flex flex-column">
-                <span>Price:</span>
-                <b>400$</b>
-              </div>
-              <button className="button">
-                <img width={11} height={11} src="/img/card/add.svg" alt="Plus"/>
-              </button>
-            </div>
-          </div>
+		fetchData();
+	}, []);
 
-          <div className="card">
-            <img width={133} height={112} src="/img/sneakers/4.jpg" alt="Sneakers"/>
-            <h5>Men Sneakers<br/>Nike Blazer Mid Suede</h5>
-            <div className="d-flex justify-between align-center">
-              <div className="d-flex flex-column">
-                <span>Price:</span>
-                <b>400$</b>
-              </div>
-              <button className="button">
-                <img width={11} height={11} src="/img/card/add.svg" alt="Plus"/>
-              </button>
-            </div>
-          </div>
-        </div>
+	const onAddToCart = async (obj) => {
+		try {
+			const findItem = cartItems.find((item) => Number(item.parentId) === Number(obj.id));
+			if(findItem) {
+				setCartItems((prev) => prev.filter(item => Number(item.parentId) !== Number(obj.id)));
+				await axios.delete(`https://629782ee14e756fe3b31ad8f.mockapi.io/cartItems/${findItem.id}`);
+			} else {
+				const {data} = await axios.post('https://629782ee14e756fe3b31ad8f.mockapi.io/cartItems', obj);	
+				setCartItems((prev) => [...prev, data]);
+			}
+		} catch (error) {
+			alert('Error')
+		}
 
-        
-      </div>
-    </div>
-  );
+	};
+
+	const onRemoveCartItem = (id) => {
+		axios.delete(`https://629782ee14e756fe3b31ad8f.mockapi.io/cartItems/${id}`);
+		setCartItems((prev) => prev.filter(item => Number(item.id) !== Number(id)));
+	}
+
+	const onChangeInputValue = (event) => {
+		setSearchValue(event.target.value)
+	}
+
+	const onAddToFavorites = async (obj) => {
+		try {
+			if (favorites.find(favObj => favObj.id ===  obj.id)) {
+				axios.delete(`https://629782ee14e756fe3b31ad8f.mockapi.io/favorites/${obj.id}`);
+
+			} else {
+				const { data } = await axios.post('https://629782ee14e756fe3b31ad8f.mockapi.io/favorites', obj);
+				setFavorites((prev) => [...prev, data]);
+			}
+		} catch (error) {
+			alert('Error')
+		}
+	}
+
+	const isItemAdded = (id) => {
+		return cartItems.some((obj) => Number(obj.parentId) === Number(id))
+	};
+
+
+	return (
+		<AppContext.Provider 
+			value={{
+				items, 
+				cartItems, 
+				favorites, 
+				isItemAdded, 
+				setDrawerOpened, 
+				setCartItems, 
+				onAddToFavorites, 
+				onAddToCart, 
+				isLoading
+			}}>
+			<div className='wrapper clear'>
+				{drawerOpened && <Drawer onClose={() => setDrawerOpened(false)} items={cartItems} onRemove={onRemoveCartItem} />}
+				<Header onClickDrawer={() => setDrawerOpened(true)} />
+
+
+				<Routes>
+					<Route path='/' element={
+						<Home 
+							items={items} 
+							searchValue={searchValue}
+							cartItems={cartItems}
+							onAddToCart={onAddToCart}
+							onChangeInputValue={onChangeInputValue}
+							onAddToFavorites={onAddToFavorites}
+							isLoading={isLoading} />
+					}>
+					</Route>
+					<Route path='/favorites' element={<Favorites/>}></Route>
+					<Route path='/orders' element={<Orders/>}></Route>
+				</Routes>
+			</div>
+		</AppContext.Provider>
+	);
 }
 
 export default App;
